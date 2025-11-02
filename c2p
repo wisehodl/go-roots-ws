@@ -1,0 +1,1 @@
+code2prompt -e c2p -e go.sum .
