@@ -33,7 +33,7 @@ func ParseElement(element json.RawMessage, value interface{}, position string) e
 	return nil
 }
 
-// FindEvent extracts an event from an EVENT envelope with no subscription ID.
+// FindEvent extracts an event from an EVENT envelope
 // Expected Format: ["EVENT", event]
 func FindEvent(env Envelope) ([]byte, error) {
 	var arr []json.RawMessage
@@ -55,6 +55,35 @@ func FindEvent(env Envelope) ([]byte, error) {
 	}
 
 	return arr[1], nil
+}
+
+// FindEventWithReq extracts an event from an EVENT envelope with a subscription ID.
+// Expected Format: ["EVENT", "SUBID", event]
+func FindEventWithReq(env Envelope) (string, []byte, error) {
+	var arr []json.RawMessage
+	if err := json.Unmarshal(env, &arr); err != nil {
+		return "", nil, fmt.Errorf("%w: %v", errors.InvalidJSON, err)
+	}
+
+	if err := CheckArrayLength(arr, 3); err != nil {
+		return "", nil, err
+	}
+
+	var label string
+	if err := ParseElement(arr[0], &label, "envelope label"); err != nil {
+		return "", nil, err
+	}
+
+	if err := CheckLabel(label, "EVENT"); err != nil {
+		return "", nil, err
+	}
+
+	var req string
+	if err := ParseElement(arr[1], &req, "request id"); err != nil {
+		return "", nil, err
+	}
+
+	return req, arr[2], nil
 }
 
 // FindSubscriptionEvent extracts an event and subscription ID from an EVENT envelope.

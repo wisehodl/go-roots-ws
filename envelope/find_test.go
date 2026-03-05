@@ -65,6 +65,68 @@ func TestFindEvent(t *testing.T) {
 	}
 }
 
+func TestFindEventWithReq(t *testing.T) {
+	cases := []struct {
+		name        string
+		env         Envelope
+		wantReq     string
+		wantEvent   []byte
+		wantErr     error
+		wantErrText string
+	}{
+		{
+			name:      "valid event",
+			env:       []byte(`["EVENT","SUBID",{"id":"abc123","kind":1}]`),
+			wantReq:   "SUBID",
+			wantEvent: []byte(`{"id":"abc123","kind":1}`),
+		},
+		{
+			name:        "wrong label",
+			env:         []byte(`["REQ","SUBID",{"id":"abc123","kind":1}]`),
+			wantErr:     errors.WrongEnvelopeLabel,
+			wantErrText: "expected EVENT, got REQ",
+		},
+		{
+			name:    "invalid json",
+			env:     []byte(`invalid`),
+			wantErr: errors.InvalidJSON,
+		},
+		{
+			name:        "missing elements",
+			env:         []byte(`["EVENT","SUBID"]`),
+			wantErr:     errors.InvalidEnvelope,
+			wantErrText: "expected 3 elements, got 2",
+		},
+		{
+			name:      "extraneous elements",
+			env:       []byte(`["EVENT","SUBID",{"id":"abc123"},"extra"]`),
+			wantReq:   "SUBID",
+			wantEvent: []byte(`{"id":"abc123"}`),
+		},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			gotReq, gotEvent, err := FindEventWithReq(tc.env)
+
+			if tc.wantErr != nil || tc.wantErrText != "" {
+				if tc.wantErr != nil {
+					assert.ErrorIs(t, err, tc.wantErr)
+				}
+
+				if tc.wantErrText != "" {
+					assert.ErrorContains(t, err, tc.wantErrText)
+				}
+				return
+			}
+
+			assert.NoError(t, err)
+			assert.Equal(t, tc.wantReq, gotReq)
+			assert.Equal(t, tc.wantEvent, gotEvent)
+		})
+	}
+}
+
 func TestFindSubscriptionEvent(t *testing.T) {
 	cases := []struct {
 		name        string
